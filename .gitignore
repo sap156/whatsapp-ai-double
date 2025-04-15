@@ -1,3 +1,12 @@
-# Secrets
-.env
+# SQLite database files
+*.db
+whatsapp-bridge/store/*.db
+
+# Chat memory and seen logs
+memory.json
 seen.json
+
+# Python
+__pycache__/
+*.pyc
+.env

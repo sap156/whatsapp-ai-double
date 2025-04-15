@@ -52,14 +52,14 @@ OPENAI_API_KEY=your_openai_key_here
 Open `whatsapp_ai_double.py` and update:
 
 ```python
-GROUP_NAME = "SRH Forever 🔥"       # Or set to None
-CONTACT_NAME = "183220XXXXX"       # Or set to None
+GROUP_NAMES = "SRH Forever 🔥"       # Or set to None
+CONTACT_NUMBERS = "183220XXXXX"       # Or set to None
 ```
 
 You can:
 
-- Set just `GROUP_NAME` → only group messages will be responded to
-- Set just `CONTACT_NAME` → only DMs will be replied to
+- Set just `GROUP_NAMES` → only group messages will be responded to
+- Set just `CONTACT_NUMBER` → only DMs will be replied to
 - Set both → respond to both
 - Set none → reply to all incoming messages
 
@@ -112,8 +112,3 @@ You'll see logs like:
 
 Seen messages are stored in `seen.json`. If deleted, the bot may reprocess older messages.
 
----
-
-## 📃 License
-
-MIT — feel free to fork, remix, and play around!

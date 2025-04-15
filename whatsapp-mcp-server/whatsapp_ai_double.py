@@ -1,3 +1,4 @@
+
 import time
 import os
 import json
@@ -13,8 +14,9 @@ from whatsapp import (
 
 # === CONFIG ===
 GROUP_NAMES = ["SRH Forever 🔥", "None"]     # List of group names
-CONTACT_NUMBERS = ["18322XXXX", "None"] # List of contact numbers (just numbers)
+CONTACT_NUMBERS = ["1832200000", "None"] # List of contact numbers (just numbers)
 SEEN_FILE = "seen.json"
+MEMORY_FILE = "memory.json"
 RESPONSE_DELAY = 3
 
 # === Load ENV ===
@@ -31,6 +33,19 @@ def load_seen_ids():
 def save_seen_ids(seen_ids):
     with open(SEEN_FILE, "w") as f:
         json.dump({"seen": list(seen_ids)}, f)
+
+# === Memory Handling ===
+def load_memory():
+    if os.path.exists(MEMORY_FILE):
+        with open(MEMORY_FILE, "r") as f:
+            return json.load(f)
+    return {}
+
+def save_memory(memory):
+    with open(MEMORY_FILE, "w") as f:
+        json.dump(memory, f, indent=2)
+
+conversation_memory = load_memory()
 
 # === Get All Matching JIDs ===
 def get_target_chat_jids(group_names=None, contact_numbers=None):
@@ -54,19 +69,38 @@ def get_target_chat_jids(group_names=None, contact_numbers=None):
 
     return target_jids
 
-# === OpenAI Response Generator ===
-def generate_openai_reply(prompt):
+# === OpenAI Response Generator with Persistent Memory ===
+def generate_openai_reply(prompt, jid):
+    history = conversation_memory.get(jid, [])
+    messages = [
+        
+        # {"role": "system", "content": "You are Abhinav. Start casually, reply in witty, sarcastic Tenglish (Telugu + English) tone. Be funny, not formal."},
+        # {"role": "system", "content": "You are Abhinav. Start the conversation casually and then respond in witty, sarcastic Tenglish (Telugu + English) tone. Be funny and engaging. Avoid being too formal."},
+        {"role": "system", "content": "You are Abhinav. Respond in casually, with a formal Higlish (Hindi + English) tone. Be funny and engaging. Avoid being too formal."},
+     
+    ]
+
+    # Add recent memory
+    messages += history[-5:]
+    messages.append({"role": "user", "content": prompt})
+
     try:
         response = client.chat.completions.create(
             model="gpt-3.5-turbo",
-            messages=[
-                {"role": "system", "content": "You are Abhinav. Start the conversation casually and then respond in witty, sarcastic Tenglish (Telugu + English) tone. Be funny and engaging. Avoid being too formal."},
-                {"role": "user", "content": prompt}
-            ],
+            messages=messages,
             temperature=0.7,
             max_tokens=100
         )
-        return response.choices[0].message.content.strip()
+
+        reply = response.choices[0].message.content.strip()
+
+        # Update + save memory
+        history.append({"role": "user", "content": prompt})
+        history.append({"role": "assistant", "content": reply})
+        conversation_memory[jid] = history[-10:]
+        save_memory(conversation_memory)
+
+        return reply
     except Exception as e:
         print(f"⚠️ OpenAI error: {e}")
         return None
@@ -115,7 +149,7 @@ def main():
                 print(f"📨 {sender}: {msg_text}")
                 time.sleep(RESPONSE_DELAY)
 
-                reply = generate_openai_reply(msg_text)
+                reply = generate_openai_reply(msg_text, jid)
 
                 if not reply or len(reply.strip()) < 3:
                     seen_ids.add(msg_id)
@@ -137,3 +171,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+       
+
+          
+    
