@@ -1,4 +1,3 @@
-
 import time
 import os
 import json
@@ -9,14 +8,16 @@ from whatsapp import (
     list_chats,
     list_messages,
     send_message,
-    Message
+    Message,
+    get_contact_chats
 )
 
 # === CONFIG ===
 GROUP_NAMES = ["SRH Forever 🔥", "None"]     # List of group names
-CONTACT_NUMBERS = ["1832200000", "None"] # List of contact numbers (just numbers)
+CONTACT_NUMBERS = ["1832200000", "None"]     # List of contact numbers (just numbers)
 SEEN_FILE = "seen.json"
 MEMORY_FILE = "memory.json"
+TONE_FILE = "tone_map.json"
 RESPONSE_DELAY = 3
 
 # === Load ENV ===
@@ -47,6 +48,58 @@ def save_memory(memory):
 
 conversation_memory = load_memory()
 
+def load_tone_map():
+    if os.path.exists(TONE_FILE):
+        with open(TONE_FILE, "r") as f:
+            return json.load(f)
+    return {}
+
+def save_tone_map(tone_map):
+    with open(TONE_FILE, "w") as f:
+        json.dump(tone_map, f, indent=2)
+
+tone_map = load_tone_map()
+
+# === Generate Custom Tone Prompt ===
+def generate_tone_prompt(jid):
+    chats = get_contact_chats(jid, limit=50)
+    messages = [chat.last_message for chat in chats if chat.last_is_from_me and chat.last_message]
+
+    if not messages:
+        return "You are Abhinav. Respond casually with wit and sarcasm in Tenglish."
+
+    prompt = (
+        "Analyze the tone and style of the following WhatsApp messages from Abhinav to this contact. "
+        "Describe how Abhinav usually responds. Focus on personality, tone, slang, and humor. "
+        "Return the result as a one-liner instruction for an AI assistant impersonating Abhinav.\n\n"
+        + "\n".join(messages[:20])
+    )
+
+    try:
+        response = client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.7,
+            max_tokens=100
+        )
+        return response.choices[0].message.content.strip()
+    except Exception as e:
+        print(f"⚠️ Tone analysis failed: {e}")
+        return "You are Abhinav. Respond casually with wit and sarcasm in Tenglish."
+
+# === Bootstrapping memory from history ===
+def initialize_memory_from_history(jid):
+    history = []
+    chat_history = get_contact_chats(jid, limit=10)
+
+    for chat in reversed(chat_history):
+        role = "assistant" if chat.last_is_from_me else "user"
+        content = chat.last_message or ""
+        if content.strip():
+            history.append({"role": role, "content": content.strip()})
+
+    return history[-10:]
+
 # === Get All Matching JIDs ===
 def get_target_chat_jids(group_names=None, contact_numbers=None):
     chats = list_chats()
@@ -69,19 +122,19 @@ def get_target_chat_jids(group_names=None, contact_numbers=None):
 
     return target_jids
 
-# === OpenAI Response Generator with Persistent Memory ===
+# === OpenAI Response Generator with Persistent Memory & Tone ===
 def generate_openai_reply(prompt, jid):
-    history = conversation_memory.get(jid, [])
-    messages = [
-        
-        # {"role": "system", "content": "You are Abhinav. Start casually, reply in witty, sarcastic Tenglish (Telugu + English) tone. Be funny, not formal."},
-        # {"role": "system", "content": "You are Abhinav. Start the conversation casually and then respond in witty, sarcastic Tenglish (Telugu + English) tone. Be funny and engaging. Avoid being too formal."},
-        {"role": "system", "content": "You are Abhinav. Respond in casually, with a formal Higlish (Hindi + English) tone. Be funny and engaging. Avoid being too formal."},
-     
-    ]
+    if jid not in conversation_memory:
+        conversation_memory[jid] = initialize_memory_from_history(jid)
 
-    # Add recent memory
-    messages += history[-5:]
+    history = conversation_memory.get(jid, [])
+
+    if jid not in tone_map:
+        tone_map[jid] = generate_tone_prompt(jid)
+        save_tone_map(tone_map)
+
+    messages = [{"role": "system", "content": tone_map[jid]}]
+    messages += history[-10:]
     messages.append({"role": "user", "content": prompt})
 
     try:
@@ -94,10 +147,9 @@ def generate_openai_reply(prompt, jid):
 
         reply = response.choices[0].message.content.strip()
 
-        # Update + save memory
         history.append({"role": "user", "content": prompt})
         history.append({"role": "assistant", "content": reply})
-        conversation_memory[jid] = history[-10:]
+        conversation_memory[jid] = history[-25:]
         save_memory(conversation_memory)
 
         return reply
@@ -140,7 +192,6 @@ def main():
                 if msg_time.tzinfo is None:
                     msg_time = msg_time.replace(tzinfo=timezone.utc)
 
-                # Already seen or too old
                 if msg_id in seen_ids or (datetime.now(timezone.utc) - msg_time).total_seconds() > 30:
                     seen_ids.add(msg_id)
                     save_seen_ids(seen_ids)
@@ -171,7 +222,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-       
-
-          
-    

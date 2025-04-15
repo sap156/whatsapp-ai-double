@@ -5,6 +5,7 @@ whatsapp-bridge/store/*.db
 # Chat bot logs
 seen.json
 memory.json
+tone_map.json
 
 # Env
 .env
