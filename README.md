@@ -1,4 +1,4 @@
-# 🤖 WhatsApp AI Bot Powered by OpenAI + MCP
+# 🤖 WhatsApp AI Double Powered by OpenAI + MCP
 
 Ever wondered what it would be like if your AI could reply to your friends *as you* on WhatsApp?
 
@@ -66,10 +66,12 @@ You can:
 ### 6. Run the MCP server and the Bot
 
 ```bash
+cd whatsapp-bridge
 go run main.go
 ```
 
 ```bash
+cd whatsapp-mcp-bridge
 python3 whatsapp_ai_double.py
 ```
 
