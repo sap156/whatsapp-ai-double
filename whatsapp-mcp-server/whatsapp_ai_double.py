@@ -3,9 +3,7 @@ import os
 import json
 from datetime import datetime, timezone
 from dotenv import load_dotenv
-import openai
 from openai import OpenAI
-
 from whatsapp import (
     list_chats,
     list_messages,
@@ -14,9 +12,10 @@ from whatsapp import (
 )
 
 # === CONFIG ===
-GROUP_NAME = "Group Name"     # Your Group Name Or None
-CONTACT_NAME = "None"     # Contact number or None (just number, no +)
+GROUP_NAMES = ["SRH Forever 🔥", "None"]     # List of group names
+CONTACT_NUMBERS = ["18322XXXX", "None"] # List of contact numbers (just numbers)
 SEEN_FILE = "seen.json"
+RESPONSE_DELAY = 3
 
 # === Load ENV ===
 load_dotenv()
@@ -33,21 +32,24 @@ def save_seen_ids(seen_ids):
     with open(SEEN_FILE, "w") as f:
         json.dump({"seen": list(seen_ids)}, f)
 
-# === Find Target Chat JIDs ===
-def get_target_chat_jids(group_name=None, contact_number=None):
+# === Get All Matching JIDs ===
+def get_target_chat_jids(group_names=None, contact_numbers=None):
     chats = list_chats()
     target_jids = []
 
+    group_names = [g.lower().strip() for g in (group_names or [])]
+    contact_numbers = [c.strip() for c in (contact_numbers or [])]
+
     for chat in chats:
-        name = chat.name.strip().lower()
+        name = (chat.name or "").lower().strip()
         jid = chat.jid
 
-        if group_name and name == group_name.strip().lower():
+        if any(name == g for g in group_names):
             target_jids.append(jid)
-        elif contact_number and jid.startswith(f"{contact_number}@s.whatsapp.net"):
+        elif any(jid.startswith(f"{c}@s.whatsapp.net") for c in contact_numbers):
             target_jids.append(jid)
 
-    if not group_name and not contact_number:
+    if not group_names and not contact_numbers:
         target_jids = [chat.jid for chat in chats]
 
     return target_jids
@@ -58,7 +60,7 @@ def generate_openai_reply(prompt):
         response = client.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[
-                {"role": "system", "content": "You are Abhinav. Respond in witty, sarcastic Tenglish (Telugu + English)."},
+                {"role": "system", "content": "You are Abhinav. Start the conversation casually and then respond in witty, sarcastic Tenglish (Telugu + English) tone. Be funny and engaging. Avoid being too formal."},
                 {"role": "user", "content": prompt}
             ],
             temperature=0.7,
@@ -69,9 +71,9 @@ def generate_openai_reply(prompt):
         print(f"⚠️ OpenAI error: {e}")
         return None
 
-# === Main Bot Loop ===
+# === Main Loop ===
 def main():
-    target_jids = get_target_chat_jids(GROUP_NAME, CONTACT_NAME)
+    target_jids = get_target_chat_jids(GROUP_NAMES, CONTACT_NUMBERS)
 
     if not target_jids:
         print("❌ No target chats found.")
@@ -86,7 +88,6 @@ def main():
     while True:
         try:
             for jid in target_jids:
-                t0 = time.time()
                 messages = list_messages(chat_jid=jid, limit=5, include_context=False)
 
                 if not messages or not isinstance(messages[0], Message):
@@ -105,47 +106,30 @@ def main():
                 if msg_time.tzinfo is None:
                     msg_time = msg_time.replace(tzinfo=timezone.utc)
 
-                # Already seen
-                if msg_id in seen_ids:
-                    continue
-
-                # Old message
-                if (datetime.now(timezone.utc) - msg_time).total_seconds() > 30:
-                    print("⏩ Skipping old message.")
+                # Already seen or too old
+                if msg_id in seen_ids or (datetime.now(timezone.utc) - msg_time).total_seconds() > 30:
                     seen_ids.add(msg_id)
                     save_seen_ids(seen_ids)
                     continue
 
-                print(f"📨 New message from {sender}: {msg_text}")
-                t1 = time.time()
+                print(f"📨 {sender}: {msg_text}")
+                time.sleep(RESPONSE_DELAY)
 
                 reply = generate_openai_reply(msg_text)
-                t2 = time.time()
 
                 if not reply or len(reply.strip()) < 3:
-                    print("⚠️ No usable reply from OpenAI. Skipping.")
                     seen_ids.add(msg_id)
                     save_seen_ids(seen_ids)
                     continue
 
-                print(f"🤖 Reply (OpenAI): {reply}")
-
                 success, status_msg = send_message(jid, reply)
-                t3 = time.time()
-
-                print(f"📤 Sent to {jid} | Success: {success} | Info: {status_msg}")
-                print(f"""⏱️ Timing:
-    Fetch:       {t1 - t0:.2f}s
-    Generation:  {t2 - t1:.2f}s
-    Send:        {t3 - t2:.2f}s
-    Total:       {t3 - t0:.2f}s
-""")
+                if success:
+                    print(f"🤖 Sent reply: {reply}")
 
                 seen_ids.add(msg_id)
                 save_seen_ids(seen_ids)
-                time.sleep(1)
 
-            time.sleep(0.5)
+            time.sleep(1)
 
         except Exception as e:
             print(f"⚠️ Error: {e}")
