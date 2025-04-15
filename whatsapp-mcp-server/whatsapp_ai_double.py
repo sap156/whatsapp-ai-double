@@ -14,7 +14,7 @@ from whatsapp import (
 
 # === CONFIG ===
 GROUP_NAMES = ["SRH Forever 🔥", "None"]     # List of group names
-CONTACT_NUMBERS = ["1832200000", "None"]     # List of contact numbers (just numbers)
+CONTACT_NUMBERS = ["16146029714", "18322089219","918008444196"]     # List of contact numbers (just numbers)
 SEEN_FILE = "seen.json"
 MEMORY_FILE = "memory.json"
 TONE_FILE = "tone_map.json"
@@ -62,17 +62,19 @@ tone_map = load_tone_map()
 
 # === Generate Custom Tone Prompt ===
 def generate_tone_prompt(jid):
-    chats = get_contact_chats(jid, limit=50)
+    chats = get_contact_chats(jid, limit=100) # Fetch the last 100 messages
     messages = [chat.last_message for chat in chats if chat.last_is_from_me and chat.last_message]
 
     if not messages:
         return "You are Abhinav. Respond casually with wit and sarcasm in Tenglish."
 
     prompt = (
-        "Analyze the tone and style of the following WhatsApp messages from Abhinav to this contact. "
-        "Describe how Abhinav usually responds. Focus on personality, tone, slang, and humor. "
-        "Return the result as a one-liner instruction for an AI assistant impersonating Abhinav.\n\n"
-        + "\n".join(messages[:20])
+        "Based on the following WhatsApp messages by Abhinav, "
+        "Analyze his personality and tone **when talking to this specific contact**. "
+        "Reply with a concise system prompt (in one sentence) that tells an AI assistant "
+        "How to respond **like Abhinav would to this person**, based on his language, style, emojis, slang, and behavior. "
+        "**Return only the instruction, no explanation.**\n\n"
+        + "\n".join(messages[:50]) # Limit to the last 50 messages
     )
 
     try:
