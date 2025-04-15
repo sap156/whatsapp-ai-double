@@ -1,12 +1,18 @@
-# SQLite database files
+# Local SQLite databases
 *.db
 whatsapp-bridge/store/*.db
 
-# Chat memory and seen logs
-memory.json
+# Chat bot logs
 seen.json
+memory.json
+
+# Env
+.env
 
 # Python
 __pycache__/
 *.pyc
-.env
+
+# Lock and version files
+*.lock
+.python-version
