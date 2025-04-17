@@ -10,6 +10,15 @@ This bot connects to the [WhatsApp-MCP](https://github.com/MervinPraison/WhatsAp
 
 ## 🚀 Features
 
+## 📦 Prerequisites
+
+- Go >= 1.24
+- Python >= 3.11
+- pip
+- SQLite3
+- ffmpeg (optional, for audio message conversion)
+- An OpenAI API key
+
 - Replies to WhatsApp messages in real-time using OpenAI
 - Supports both group chats and individual contacts
 - Responds in your personal tone (witty, casual, sarcastic)
@@ -27,19 +36,25 @@ git clone https://github.com/your-username/whatsapp-ai-double.git
 cd whatsapp-ai-double
 ```
 
-### 2. Start the WhatsApp MCP Server
-
-Follow setup instructions from the original repo: 👉 [https://github.com/MervinPraison/WhatsApp-MCP](https://github.com/MervinPraison/WhatsApp-MCP)
-
-Make sure it's running and messages.db is being updated.
-
-### 3. Install Python Dependencies
+### 2. Setup the WhatsApp Bridge (Go)
 
 ```bash
-pip install -r requirements.txt
+cd whatsapp-bridge
+go mod download
+go run main.go
 ```
 
-Make sure `python`, `go` `openai`, `python-dotenv`, and `requests` are installed. 
+- Scan the QR code with your WhatsApp mobile app.
+- Wait for "Connected to WhatsApp!".
+- The bridge will sync messages to `whatsapp-bridge/store/messages.db` and start a REST API on `http://localhost:8080`.
+
+### 3. Install Python Dependencies (MCP Server & AI Bot)
+
+```bash
+pip install httpx mcp[cli] requests python-dotenv openai
+```
+
+This installs dependencies for both the MCP CLI tools and the AI auto-responder.
 
 ### 4. Create a `.env` File
 
@@ -63,15 +78,15 @@ You can:
 - Set both → respond to both
 - Set none → reply to all incoming messages
 
-### 6. Run the MCP server and the Bot
+### 6. Run the Go Bridge and the AI Bot
 
 ```bash
+# In one terminal, start the Go bridge (if not already running)
 cd whatsapp-bridge
 go run main.go
-```
 
-```bash
-cd whatsapp-mcp-bridge
+# In another terminal, start the AI auto-responder
+cd whatsapp-mcp-server
 python3 whatsapp_ai_double.py
 ```
 
@@ -111,4 +126,6 @@ You'll see logs like:
 ## 🧼 Clean Shutdown
 
 Seen messages are stored in `seen.json`. If deleted, the bot may reprocess older messages.
+Generated Tones are stored in `tone_map.json`. If deleted, the bot may reprocess older messages to find your tone.
+Messages for context awareness are stored in `memory.json`. If deleted, the bot may reprocess older messages for context awareness. 
 

@@ -150,7 +150,7 @@ def generate_openai_reply(prompt, jid, msg_id=None):
             model=os.getenv("OPENAI_MODEL_REPLY", "gpt-4o"),
             messages=messages,
             temperature=0.7,
-            max_tokens=100
+            max_tokens=250
         )
         reply = response.choices[0].message.content.strip()
         history.append({"role": "user", "content": prompt})
