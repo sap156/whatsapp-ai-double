@@ -1,5 +1,8 @@
 # 🤖 WhatsApp AI Double Powered by OpenAI + MCP
 
+<img width="1021" alt="Screenshot 2025-04-21 at 10 12 18 AM" src="https://github.com/user-attachments/assets/959a06db-67e1-4490-bc2d-d93bdafdf7e0" />
+
+
 Ever wondered what it would be like if your AI could reply to your friends *as you* on WhatsApp?
 
 That's exactly what this project does.
